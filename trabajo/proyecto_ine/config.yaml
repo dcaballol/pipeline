@@ -1,0 +1,26 @@
+datos:
+  carpeta: "data/raw"
+  archivo: "ano-2025.csv"
+  separador: ";"
+  decimal: ","
+  encoding: "utf-8-sig"
+
+ene:
+  # La base entregada es anual; el libro de códigos indica usar fact_anual.
+  factor_expansion: "fact_anual"
+  edad_minima_pet: 15
+
+salida:
+  carpeta: "salida"
+  exportar_parquet: true
+
+base_datos:
+  ruta: "salida/ene_2025.db"
+
+aws:
+  # Credenciales en .env (nunca en este archivo). Se conserva la conexión
+  # original y se cambia el prefijo para separar los resultados de ENE.
+  subir_a_s3: false
+  bucket: "ine-2025"
+  prefix: "ene-2025/"
+  region: "us-east-2"

@@ -1,0 +1,427 @@
+---
+title: "Indicadores laborales ENE 2025"
+subtitle: "Informe técnico reproducible: texto, código y resultados"
+author: "Equipo de proyecto"
+date: last-modified
+lang: es
+output-file: index.html
+jupyter: python3
+---
+
+::: {.cover-page}
+<div class="cover-kicker">Proyecto de Ingeniería de Datos</div>
+
+<div class="cover-rule"></div>
+
+# Indicadores laborales ENE 2025 {.unnumbered}
+
+<p class="cover-subtitle">Diseño, implementación y documentación de una solución ETL reproducible para transformar microdatos de la Encuesta Nacional de Empleo en información analítica consultable.</p>
+
+<div class="cover-details">
+<div><strong>Documento</strong>Informe técnico reproducible</div>
+<div><strong>Fuente</strong>Encuesta Nacional de Empleo · INE Chile</div>
+<div><strong>Periodo analizado</strong>Base anual 2025</div>
+<div><strong>Elaborado por</strong>Equipo de proyecto</div>
+<div><strong>Herramientas</strong>Python, SQLite, Streamlit y Quarto</div>
+<div><strong>Fecha</strong>2026</div>
+</div>
+:::
+
+::: {.page-break}
+:::
+
+## Introducción
+
+Este informe documenta una solución ETL local para transformar la base anual
+2025 de la Encuesta Nacional de Empleo (ENE) en indicadores laborales
+consultables. El documento es reproducible: cada paso contiene el código que
+se ejecuta y el botón de copia de Quarto permite reutilizarlo directamente.
+
+La base original no se incorpora al repositorio por su tamaño. Para reproducir
+el análisis, se descarga la base anual ENE desde el INE y se ubica como
+`data/raw/ano-2025.csv`.
+
+## Arquitectura y dataset utilizado
+
+### Componentes de la solución
+
+```{mermaid}
+flowchart LR
+  A[Base anual ENE 2025<br/>CSV] --> B[Extracción<br/>src/extraer.py]
+  B --> C[Transformación y calidad<br/>src/transformar.py]
+  C --> D[Carga<br/>src/cargar.py]
+  D --> E[SQLite, CSV y Parquet]
+  E --> F[Dashboard Streamlit y HTML]
+```
+
+El proceso usa `pandas` y `numpy` para el tratamiento de datos, SQLite como
+repositorio analítico local y Streamlit para la visualización interactiva. La
+carga a Amazon S3 es opcional y queda desactivada por defecto.
+
+### Características de la fuente
+
+| Atributo | Descripción |
+|---|---|
+| Origen | Instituto Nacional de Estadísticas de Chile, Encuesta Nacional de Empleo. |
+| Archivo | `data/raw/ano-2025.csv` |
+| Formato | CSV UTF-8, separado por `;` y con decimal `,`. |
+| Frecuencia | Anual. |
+| Volumen procesado | 390.903 registros, 222 columnas y 146,42 MB. |
+| Unidad de análisis | Persona integrante de un hogar encuestado. |
+
+El pipeline utiliza las variables `ano_trimestre`, `region`, `sexo`, `edad`,
+`cae_especifico`, `ocup_form`, `sector`, `habituales`, `c10`, `c11`, `e4` y
+`fact_anual`. El factor anual expande los registros de la muestra a una
+estimación de personas.
+
+### Diccionario de variables analíticas
+
+| Variable | Tipo | Uso en el análisis |
+|---|---|---|
+| `ano_trimestre` | Entero | Identifica el año de referencia. |
+| `region` | Categórica numérica | Región de residencia, códigos 1 a 16. |
+| `sexo` | Categórica numérica | Desagregación por sexo, códigos 1 y 2. |
+| `edad` | Entero | Define población de 15 años o más y tramos etarios. |
+| `cae_especifico` | Categórica numérica | Condición de actividad: ocupación, desocupación e inactividad. |
+| `ocup_form` | Categórica numérica | Clasifica la ocupación formal o informal. |
+| `sector` | Categórica numérica | Identifica el sector institucional formal o informal. |
+| `habituales` | Numérica | Horas habituales; insumo para tiempo parcial involuntario. |
+| `c10`, `c11` | Categóricas numéricas | Disponibilidad y condición para trabajar más horas. |
+| `e4` | Categórica numérica | Búsqueda de empleo de personas ocupadas. |
+| `fact_anual` | Decimal | Factor de expansión anual para estimar personas. |
+| `tramo_edad` | Categórica numérica | Variable fuente para contraste; la salida deriva tramos legibles desde `edad`. |
+
+### Indicadores que entrega el informe
+
+| Indicador | Lectura en lenguaje simple |
+|---|---|
+| Tasa de desocupación (TD) | Proporción de la fuerza de trabajo que busca empleo y no lo tiene. |
+| Tasa de ocupación (TO) | Proporción de personas de 15 años o más que está ocupada. |
+| Tasa de participación laboral (TP) | Proporción de personas de 15 años o más que trabaja o busca empleo. |
+| Tasa de presión laboral (TPL) | Mide la presión sobre el empleo: desocupados, iniciadores disponibles y ocupados que buscan trabajo. |
+| Subutilización laboral (SU1 a SU4) | Medidas que amplían la desocupación al considerar disponibilidad, horas insuficientes y fuerza de trabajo potencial. |
+| Tasa de ocupación informal (TOI) | Proporción de personas ocupadas con empleo informal. |
+| Tasa de ocupación en el sector informal (TOSI) | Proporción de ocupados que trabaja en unidades del sector informal. |
+
+### Preparación reproducible
+
+Desde la carpeta raíz del proyecto, ejecute una vez lo siguiente. En Windows,
+si Quarto no está instalado, instálelo desde <https://quarto.org> antes de
+renderizar el informe.
+
+```{.bash}
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+quarto render informe.qmd
+```
+
+La primera ejecución genera este mismo documento en `docs/index.html`; esa es
+la carpeta que se publica en GitHub Pages.
+
+### Configuración ejecutable
+
+El siguiente archivo controla la fuente, las reglas de población en edad de
+trabajar, el destino de resultados y la conexión opcional a AWS.
+
+```{yaml}
+#| filename: config.yaml
+datos:
+  carpeta: "data/raw"
+  archivo: "ano-2025.csv"
+  separador: ";"
+  decimal: ","
+  encoding: "utf-8-sig"
+  frecuencia: "anual"
+  fuente: "Encuesta Nacional de Empleo (INE Chile)"
+
+ene:
+  factor_expansion: "fact_anual"
+  edad_minima_pet: 15
+  edad_maxima_valida: 120
+
+salida:
+  carpeta: "salida"
+  exportar_parquet: true
+  reportes_subcarpeta: "reportes"
+  limpiar_reportes_antes_de_cargar: true
+
+base_datos:
+  ruta: "salida/ene_2025.db"
+
+aws:
+  subir_a_s3: false
+  bucket: "grupo-ordenes-riesgo-2026"
+  prefix: "ene-2025/"
+  region: "us-east-2"
+```
+
+## Modelo ETL implementado
+
+### Ingesta de datos
+
+El bloque lee la configuración y ejecuta la extracción. `extraer_ene` verifica
+que exista el archivo y que estén presentes las variables necesarias antes de
+continuar. Además, conserva metadatos de origen para auditoría.
+
+```{python}
+#| echo: true
+#| output: true
+from pipeline import cargar_configuracion
+from src.extraer import extraer_ene
+
+config = cargar_configuracion()
+base = extraer_ene(config["datos"])
+
+print(f"Filas leídas: {len(base):,}")
+print(f"Variables analíticas: {', '.join(base.columns)}")
+print(base.attrs["metadatos_origen"])
+```
+
+### Transformación y calidad de datos
+
+La transformación convierte los tipos numéricos, valida catálogos, conserva
+registros observables para auditoría y deriva componentes laborales. La
+población en edad de trabajar se define desde los 15 años; por ello las
+personas menores de 15 se mantienen en microdatos, pero no se usan en tasas
+laborales. Los tramos analíticos comienzan en 15-24 y terminan en 70+.
+
+```{python}
+#| echo: true
+#| output: true
+from src.transformar import generar_resultados
+
+microdatos, resultados, calidad = generar_resultados(
+    base,
+    factor=config["ene"]["factor_expansion"],
+    edad_minima=config["ene"]["edad_minima_pet"],
+    edad_maxima=config["ene"]["edad_maxima_valida"],
+)
+
+display(calidad)
+display(resultados["indicadores_nacionales"])
+```
+
+Las tasas se calculan usando el factor de expansión. Por ejemplo, la tasa de
+desocupación corresponde a personas desocupadas divididas por fuerza de
+trabajo; la tasa de ocupación corresponde a personas ocupadas divididas por la
+población en edad de trabajar.
+
+### Carga al repositorio analítico
+
+El siguiente código persiste los microdatos analíticos, indicadores, calidad y
+metadatos en SQLite. Los reportes CSV y Parquet se reemplazan en cada corrida,
+por lo que `salida/reportes/` contiene solo el producto vigente.
+
+```{python}
+#| echo: true
+#| output: true
+from datetime import datetime
+from pathlib import Path
+import pandas as pd
+from src.cargar import guardar_resultados, generar_dashboard
+
+corrida_id = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+metadata = pd.DataFrame([{
+    "corrida_id": corrida_id,
+    "fecha_ejecucion": datetime.now().isoformat(timespec="seconds"),
+    "fuente": config["datos"]["fuente"],
+    "factor_expansion": config["ene"]["factor_expansion"],
+    **base.attrs["metadatos_origen"],
+}])
+
+rutas = guardar_resultados(
+    resultados, calidad, microdatos, metadata,
+    config["base_datos"]["ruta"],
+    config["salida"]["carpeta"],
+    config["salida"]["exportar_parquet"],
+    config["salida"]["limpiar_reportes_antes_de_cargar"],
+)
+
+periodo = ", ".join(map(str, sorted(base["ano_trimestre"].dropna().unique())))
+generar_dashboard(resultados, calidad, Path(config["salida"]["carpeta"]) / "visualizacion.html", periodo, corrida_id)
+print("Productos generados:", *rutas, sep="\n- ")
+```
+
+### Salida opcional a AWS
+
+La solución puede copiar los productos finales a S3, pero no exige credenciales
+ni servicios en la nube para funcionar localmente. Solo se activa al cambiar
+`subir_a_s3` a `true` y definir las credenciales AWS en el entorno.
+
+```{python}
+#| eval: false
+from src.cargar import subir_a_s3
+
+subir_a_s3(
+    rutas=rutas,
+    bucket=config["aws"]["bucket"],
+    prefix=config["aws"]["prefix"],
+    region=config["aws"]["region"],
+    carpeta_base=config["salida"]["carpeta"],
+)
+```
+
+## Calidad de datos
+
+La calidad no descarta silenciosamente registros. Cada regla genera una fila en
+`reporte_calidad_datos` con su cantidad afectada y tratamiento aplicado. En la
+última corrida, no hubo conversiones fallidas, edades inválidas, regiones
+inválidas ni factores nulos, cero o negativos. Se registraron 62.905 personas
+menores de 15 años: son válidas en la encuesta y se excluyen únicamente de los
+indicadores laborales.
+
+```{python}
+#| echo: true
+#| output: true
+import sqlite3
+
+with sqlite3.connect(config["base_datos"]["ruta"]) as conexion:
+    control_calidad = pd.read_sql_query(
+        "SELECT criterio, regla_aplicada, registros_afectados, tratamiento "
+        "FROM reporte_calidad_datos", conexion
+    )
+
+display(control_calidad)
+```
+
+## Visualización de datos
+
+El dashboard utiliza las mismas tablas SQLite generadas en la carga y presenta
+indicadores regionales ordenados de mayor a menor, con etiquetas visibles. Para
+abrirlo localmente se ejecuta:
+
+```{.bash}
+streamlit run dashboard.py
+```
+
+Como verificación independiente, este bloque recupera la tabla nacional desde
+el repositorio, sin depender de los objetos que están en memoria durante la
+transformación.
+
+```{python}
+#| echo: true
+#| output: true
+with sqlite3.connect(config["base_datos"]["ruta"]) as conexion:
+    nacionales = pd.read_sql_query("SELECT * FROM indicadores_nacionales", conexion)
+    regiones = pd.read_sql_query(
+        "SELECT grupo AS region, tasa_desocupacion FROM indicadores_region "
+        "ORDER BY tasa_desocupacion DESC", conexion
+    )
+
+display(nacionales)
+display(regiones.head(5))
+```
+
+### Gráficos de resultados
+
+Los siguientes gráficos se construyen desde las tablas SQLite de la última
+corrida; por lo tanto, se actualizan automáticamente al cambiar la base anual.
+Las barras se ordenan de mayor a menor y muestran su etiqueta para facilitar la
+lectura sin interacción, siguiendo el criterio aplicado en Streamlit.
+
+```{python}
+#| echo: true
+#| fig-cap: "Tasa de desocupación regional, ordenada de mayor a menor. Fuente: indicadores_region."
+import matplotlib.pyplot as plt
+
+with sqlite3.connect(config["base_datos"]["ruta"]) as conexion:
+    grafico_region = pd.read_sql_query(
+        "SELECT grupo, tasa_desocupacion FROM indicadores_region "
+        "ORDER BY tasa_desocupacion DESC", conexion
+    )
+
+fig, ax = plt.subplots(figsize=(10, 6))
+ax.barh(grafico_region["grupo"], grafico_region["tasa_desocupacion"], color="#2a6f97")
+ax.invert_yaxis()
+ax.set_xlabel("Tasa de desocupación (%)")
+ax.set_ylabel("")
+ax.set_title("Desocupación por región")
+for posicion, valor in enumerate(grafico_region["tasa_desocupacion"]):
+    ax.text(valor + 0.08, posicion, f"{valor:.2f}%".replace(".", ","), va="center")
+ax.set_xlim(0, grafico_region["tasa_desocupacion"].max() + 1.2)
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+#| echo: true
+#| fig-cap: "Tasas de desocupación, ocupación y participación por sexo. Fuente: indicadores_sexo."
+with sqlite3.connect(config["base_datos"]["ruta"]) as conexion:
+    grafico_sexo = pd.read_sql_query(
+        "SELECT grupo, tasa_desocupacion, tasa_ocupacion, tasa_participacion "
+        "FROM indicadores_sexo ORDER BY grupo", conexion
+    )
+
+fig, ax = plt.subplots(figsize=(8, 5))
+grafico_sexo.set_index("grupo").plot(
+    kind="bar", ax=ax, color=["#d1495b", "#2a6f97", "#59a14f"]
+)
+ax.set_title("Indicadores laborales por sexo")
+ax.set_xlabel("")
+ax.set_ylabel("Porcentaje")
+ax.legend(title="Indicador", labels=["Desocupación", "Ocupación", "Participación"])
+for contenedor in ax.containers:
+    ax.bar_label(contenedor, fmt="%.1f%%", padding=2, fontsize=8)
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+#| echo: true
+#| fig-cap: "Tasa de desocupación por tramo de edad. Fuente: indicadores_tramo_edad."
+with sqlite3.connect(config["base_datos"]["ruta"]) as conexion:
+    grafico_edad = pd.read_sql_query(
+        "SELECT grupo, tasa_desocupacion FROM indicadores_tramo_edad", conexion
+    )
+
+orden_edad = ["15-24", "25-34", "35-44", "45-54", "55-64", "65-69", "70+"]
+grafico_edad["grupo"] = pd.Categorical(grafico_edad["grupo"], categories=orden_edad, ordered=True)
+grafico_edad = grafico_edad.sort_values("grupo")
+
+fig, ax = plt.subplots(figsize=(9, 5))
+barras = ax.bar(grafico_edad["grupo"], grafico_edad["tasa_desocupacion"], color="#f4a261")
+ax.set_title("Desocupación por tramo de edad")
+ax.set_xlabel("Tramo de edad")
+ax.set_ylabel("Tasa de desocupación (%)")
+ax.bar_label(barras, fmt="%.2f%%", padding=3)
+plt.tight_layout()
+plt.show()
+```
+
+## Pruebas y criterios de aceptación
+
+Antes de dar por válida una corrida, se ejecutan las pruebas automatizadas. Estas
+comprueban la definición de componentes, denominadores de indicadores, tramos
+de edad, preservación para auditoría y carga en SQLite.
+
+```{.bash}
+pytest -q
+```
+
+Como control de resultado para la base anual 2025, los indicadores nacionales
+deben aproximarse a los siguientes valores:
+
+| Indicador | Resultado esperado |
+|---|---:|
+| Tasa de desocupación | 8,56% |
+| Tasa de ocupación | 56,79% |
+| Tasa de participación | 62,10% |
+| Tasa de ocupación informal | 26,19% |
+
+## Conclusiones
+
+La solución separa claramente la fuente, las reglas de transformación, el
+repositorio analítico y las visualizaciones. Se puede repetir para una nueva
+base anual reemplazando el archivo de origen y ajustando la configuración, sin
+acumular reportes de ejecuciones previas. El siguiente avance operativo
+recomendado es automatizar la descarga anual de la fuente y alertar cambios en
+su esquema de columnas.
+
+## Referencias
+
+- Instituto Nacional de Estadísticas de Chile. *Encuesta Nacional de Empleo:
+  libro de códigos y base anual 2025*.
+- Documentación de variables disponible en `docs/codigos-ene-2020.pdf`.
+- Código fuente del proyecto: `pipeline.py`, `src/` y `tests/test_pipeline.py`.

@@ -1,0 +1,12 @@
+pandas
+numpy
+pyyaml
+loguru
+pyarrow
+pytest
+boto3
+python-dotenv
+streamlit
+altair
+jupyter
+matplotlib

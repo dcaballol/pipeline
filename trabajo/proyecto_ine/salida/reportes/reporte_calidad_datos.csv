@@ -1,0 +1,10 @@
+﻿criterio,regla_aplicada,registros_afectados,tratamiento
+Normalización de formatos,Conversión de variables analíticas a tipo numérico.,0,Valores no convertibles pasan a nulo y quedan documentados.
+Valores erróneos,Edad fuera del rango válido del microdato: 0-120.,0,Se conserva el registro; la edad se deja nula y no integra la población en edad de trabajar.
+Alcance analítico,Indicadores laborales desde 15 años; tramos 15-24 a 65-69 y 70+.,62905,"Menores de 15 años son válidos en la encuesta, se conservan en microdatos y no integran resultados laborales."
+Valores erróneos,cae_especifico fuera del catálogo 0-28.,0,Se conserva el registro; se excluye de los componentes laborales derivados.
+Valores erróneos,Región fuera del catálogo 1-16.,0,Se conserva el registro; se reporta como Sin clasificación.
+Valores erróneos,Sexo fuera del catálogo 1-2.,0,Se conserva el registro; se reporta como Sin clasificación.
+Valores erróneos,"fact_anual nulo, cero o negativo.",0,Se conserva el registro con factor 0; no aporta a estimaciones ponderadas.
+Completitud,Al menos una variable crítica nula tras validación.,0,Se mantiene para auditoría; cada indicador usa únicamente sus componentes válidos.
+Métricas derivadas,"Componentes PET, FT, ocupados, desocupados, subutilización e informalidad.",390903,Se agregan columnas analíticas trazables al microdato; no reemplazan variables fuente.

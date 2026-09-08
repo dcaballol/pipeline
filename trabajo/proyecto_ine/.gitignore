@@ -1,0 +1,15 @@
+# Configuración local opcional
+.env
+
+# Datos y resultados generados
+logs/
+salida/*.db
+salida/*.parquet
+salida/*.csv
+salida/visualizacion*.html
+__pycache__/
+*.pyc
+.pytest_cache/
+
+/.quarto/
+**/*.quarto_ipynb

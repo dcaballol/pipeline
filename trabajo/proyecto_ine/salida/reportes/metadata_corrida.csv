@@ -1,0 +1,2 @@
+﻿corrida_id,fecha_ejecucion,fuente,factor_expansion,archivo_origen,ruta_origen,tamano_mb,filas_origen,columnas_origen,variables_analiticas_cargadas,frecuencia
+2026-09-07_192202,2026-09-07T19:22:02,Encuesta Nacional de Empleo (INE Chile),fact_anual,ano-2025.csv,C:\Users\Daniel Contreras\Desktop\diplo_ing_datos\pipeline\trabajo\proyecto_ine\data\raw\ano-2025.csv,146.42,390903,222,13,anual

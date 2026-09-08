@@ -13,3 +13,9 @@ __pycache__/
 
 /.quarto/
 **/*.quarto_ipynb
+
+  # Base original ENE: queda local y no se publica
+  data/raw/*.csv
+
+  # Todos los productos generados por el pipeline
+  salida/

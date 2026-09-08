@@ -195,8 +195,8 @@ from src.transformar import generar_resultados
 microdatos, resultados, calidad = generar_resultados(
     base,
     factor=config["ene"]["factor_expansion"],
-    edad_minima=config["ene"]["edad_minima_pet"],
-    edad_maxima=config["ene"]["edad_maxima_valida"],
+    edad_minima=config["ene"].get("edad_minima_pet", 15),
+    edad_maxima=config["ene"].get("edad_maxima_valida", 120),
 )
 
 display(calidad)
@@ -226,7 +226,7 @@ corrida_id = datetime.now().strftime("%Y-%m-%d_%H%M%S")
 metadata = pd.DataFrame([{
     "corrida_id": corrida_id,
     "fecha_ejecucion": datetime.now().isoformat(timespec="seconds"),
-    "fuente": config["datos"]["fuente"],
+    "fuente": config["datos"].get("fuente", "Encuesta Nacional de Empleo (INE Chile)"),
     "factor_expansion": config["ene"]["factor_expansion"],
     **base.attrs["metadatos_origen"],
 }])
@@ -235,8 +235,8 @@ rutas = guardar_resultados(
     resultados, calidad, microdatos, metadata,
     config["base_datos"]["ruta"],
     config["salida"]["carpeta"],
-    config["salida"]["exportar_parquet"],
-    config["salida"]["limpiar_reportes_antes_de_cargar"],
+    config["salida"].get("exportar_parquet", True),
+    config["salida"].get("limpiar_reportes_antes_de_cargar", True),
 )
 
 periodo = ", ".join(map(str, sorted(base["ano_trimestre"].dropna().unique())))
